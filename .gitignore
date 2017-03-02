@@ -38,6 +38,8 @@ Thumbs.db
 
 # project specific #
 *.pyc
+*.gitignore
+__pycache__
 ######################
 # exclude all, but...
 #*
