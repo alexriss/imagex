@@ -37,6 +37,7 @@ ehthumbs.db
 Thumbs.db
 
 # project specific #
+*.pyc
 ######################
 # exclude all, but...
 #*
