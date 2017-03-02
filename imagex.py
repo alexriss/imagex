@@ -89,10 +89,11 @@ class ImageData(object):
 
 
       
-    def plot_image(self, channel_name, cmap='', interpolation="bicubic", background="none", no_labels=False, output_filename="", output_dpi=100, empty_image=False):
+    def plot_image(self, channel_name, cmap='', interpolation="bicubic", background="none", no_labels=False, pixel_units=False, output_filename="", output_dpi=100, alpha=1, axes=None, extra_output=True):
         '''return plot of images of channel. You can specify a colormap (cmap), the interpolation type, as well as background subtraction ("offset" or "none").
+        If pixel_units is True, then the x and y axis will be plotted in pixel_units (instead of nm).
         If no_labels is set to True, then the bare body is output. If output_filename is given, then the plot is saved under this filename with resolution output_dpi.
-        If empty_image is True, then it will just give out an empty image.'''
+        If no axes is given, a new matplotlib Figure object will be created for the plot.'''
 
         channel = self.get_channel(channel_name)
         
@@ -100,16 +101,17 @@ class ImageData(object):
         z = channel['data']
         unit = channel['data_header']['unit']
         name = channel['data_header']['name']
-        return self.plot_data(z, name=name, unit=unit, cmap=cmap, interpolation=interpolation, background=background, no_labels=no_labels, output_filename=output_filename, output_dpi=output_dpi, alpha=alpha)
+        return self.plot_data(z, name=name, unit=unit, cmap=cmap, interpolation=interpolation, background=background, no_labels=no_labels, pixel_units=pixel_units, output_filename=output_filename, output_dpi=output_dpi, alpha=alpha, axes=axes, extra_output=extra_output)
         
             
-    def plot_data(self, data, name="", unit="", cmap='', interpolation="bicubic", background="none", no_labels=False, output_filename="", output_dpi=100, alpha=1):
+    def plot_data(self, data, name="", unit="", cmap='', interpolation="bicubic", background="none", no_labels=False, pixel_units=False, output_filename="", output_dpi=100, alpha=1, axes=None, extra_output=True):
         """returns plot of the data. You can specify a colormap (cmap), the interpolation type, as well as background subtraction ("offset" or "none").
+        If pixel_units is True, then the x and y axis will be plotted in pixel_units (instead of nm).
         If no_labels is set to True, then the bare body is output. If output_filename is given, then the plot is saved under this filename with resolution output_dpi.
         name and unit are for the axis labels.
-        If empty_image is True, then it will just give out a fully transparent empty image."""
+        If no axes is given, a new matplotlib Figure object will be created for the plot."""
     
-        x_len, y_len = self.scansize[0], self.scansize[1]
+        if not pixel_units: x_len, y_len = self.scansize[0], self.scansize[1]
         z = data
         # if unit == 'm':
             # z = z*1.0e9
@@ -120,13 +122,17 @@ class ImageData(object):
 
         if cmap=='': cmap=greys_linear
 
-        fig = plt.figure()
-        if no_labels:
-            ax = fig.add_axes([0,0,1,1])
+        if axes == None:
+            fig = plt.figure()
+            if no_labels:
+                ax = fig.add_axes([0,0,1,1])
+            else:
+                ax = plt.subplot(111)
         else:
-            ax = plt.subplot(111)
+            ax = axes
+            plt.sca(ax)
         img = ax.imshow(z, cmap=cmap, aspect='equal', interpolation=interpolation, origin='lower', picker=True, alpha=alpha)
-        plt.setp(img, extent=(0,x_len,0,y_len))
+        if not pixel_units: plt.setp(img, extent=(0,x_len,0,y_len))
         
         ax.grid(False)
         if no_labels:
@@ -134,29 +140,35 @@ class ImageData(object):
             ax.get_xaxis().set_visible(False)
             ax.get_yaxis().set_visible(False)
         else:
-            ax.set_xlabel("X [nm]")
-            ax.set_ylabel("Y [nm]")
+            if pixel_units:
+                ax.set_xlabel("X [px]")
+                ax.set_ylabel("Y [px]")
+            else:
+                ax.set_xlabel("X [nm]")
+                ax.set_ylabel("Y [nm]")
 
-            fig_title = name + ' ['+unit+']'
+            fig_title = name
+            if unit: fig_title += ' ['+unit+']'
             if background != "none":
                 fig_title += "; background correction: %s" % background
             ax.set_title(fig_title)
            
-            divider =  mpl_toolkits.axes_grid1.make_axes_locatable(plt.gca())
-            cax = divider.append_axes("right", "5%", pad="3%")
-            cbar = plt.colorbar(img, cax=cax)
-            cbar.ax.tick_params(labelsize=8) 
-            #cbar = plt.colorbar(img, shrink=0.8) # fraction=0.046, pad=0.04, shrink=0.8
+            #divider = mpl_toolkits.axes_grid1.make_axes_locatable(plt.gca())
+            #cax = divider.append_axes("right", "5%", pad="3%")
+            #cbar = plt.colorbar(img, cax=cax)
+            #cbar.ax.tick_params(labelsize=8) 
+            
+            cbar = plt.colorbar(img, fraction=0.046, pad=0.04) # fraction=0.046, pad=0.04, shrink=0.8
             #cbar.set_label(name+' ['+unit+']')
         
-        print("%s: min=%s%s, max=%s%s" % (name, np.amin(z), unit, np.amax(z), unit))
+        if extra_output: print("%s: min=%s%s, max=%s%s" % (name, np.amin(z), unit, np.amax(z), unit))
         if background != "none":
-            print("%s (without background correction): min=%s%s, max=%s%s" % (name, np.amin(z_orig), unit, np.amax(z_orig), unit))
+            if extra_output: print("%s (without background correction): min=%s%s, max=%s%s" % (name, np.amin(z_orig), unit, np.amax(z_orig), unit))
         if output_filename != "":
             plt.savefig(output_filename, bbox_inches='tight', pad_inches=0, dpi=output_dpi)
-            print("Saved: %s" % output_filename)
+            if extra_output: print("Saved: %s" % output_filename)
 
-        return fig
+        if axes == None: return fig
         
         
     def line_profile(self, data, points=[], linewidth=1, outside_range='constant'):
@@ -277,12 +289,23 @@ class ImageData(object):
 
         
     def nm_to_pixels(self, p):
-        """converts x,y coordinates from nm to pixel coordinates"""
-        return (p[0]/self.scansize[0]*self.pixelsize[0], p[1]/self.scansize[1]*self.pixelsize[1])
+        """converts from nm to pixel coordinates. Input is either a single number or x,y coordinates."""
+        if isinstance(p, (int, float)):
+            return p/self.scansize[0]*self.pixelsize[0]
+        elif isinstance(p, (list, tuple)) and len(p)==2:
+            return (p[0]/self.scansize[0]*self.pixelsize[0], p[1]/self.scansize[1]*self.pixelsize[1])
+        else:
+            raise ValueError('The input to nm_to_pixels should either be a single number or x,y coordinates.')
+            
             
     def pixels_to_nm(self, p):
-        """converts x,y coordinates from pixel to nm coordinates"""
-        return (p[0]*self.scansize[0]/self.pixelsize[0], p[1]*self.scansize[1]/self.pixelsize[1])
+        """converts from pixel to nm coordinates. Input is either a single number or x,y coordinates."""
+        if isinstance(p, (int, float)):
+            return p*self.scansize[0]/self.pixelsize[0]
+        elif isinstance(p, (list, tuple)) and len(p)==2:
+            return (p[0]*self.scansize[0]/self.pixelsize[0], p[1]*self.scansize[1]/self.pixelsize[1])
+        else:
+            raise ValueError('The input to pixels_to_nm should either be a single number or x,y coordinates.')
 
     
 def get_distance(p1,p2):
