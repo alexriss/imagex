@@ -96,6 +96,7 @@ class ImageData(object):
         If no axes is given, a new matplotlib Figure object will be created for the plot.'''
 
         channel = self.get_channel(channel_name)
+        if channel is False: return False
         
         # z = np.fliplr(np.rot90(self.channels[i_channel]['data'], k=1))
         z = channel['data']
@@ -292,7 +293,7 @@ class ImageData(object):
         """converts from nm to pixel coordinates. Input is either a single number or x,y coordinates."""
         if isinstance(p, (int, float)):
             return p/self.scansize[0]*self.pixelsize[0]
-        elif isinstance(p, (list, tuple)) and len(p)==2:
+        elif isinstance(p, (list, tuple, np.ndarray)) and len(p)==2:
             return (p[0]/self.scansize[0]*self.pixelsize[0], p[1]/self.scansize[1]*self.pixelsize[1])
         else:
             raise ValueError('The input to nm_to_pixels should either be a single number or x,y coordinates.')
@@ -302,7 +303,7 @@ class ImageData(object):
         """converts from pixel to nm coordinates. Input is either a single number or x,y coordinates."""
         if isinstance(p, (int, float)):
             return p*self.scansize[0]/self.pixelsize[0]
-        elif isinstance(p, (list, tuple)) and len(p)==2:
+        elif isinstance(p, (list, tuple, np.ndarray)) and len(p)==2:
             return (p[0]*self.scansize[0]/self.pixelsize[0], p[1]*self.scansize[1]/self.pixelsize[1])
         else:
             raise ValueError('The input to pixels_to_nm should either be a single number or x,y coordinates.')
