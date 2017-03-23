@@ -131,6 +131,8 @@ class ImageData(object):
                 ax = plt.subplot(111)
         else:
             ax = axes
+            for im in ax.images:
+                if im.colorbar: im.colorbar.remove()  # remove any present colorbars
             plt.sca(ax)
         img = ax.imshow(z, cmap=cmap, aspect='equal', interpolation=interpolation, origin='lower', picker=True, alpha=alpha)
         if not pixel_units: plt.setp(img, extent=(0,x_len,0,y_len))
