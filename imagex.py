@@ -60,13 +60,13 @@ class ImageData(object):
         self.acquisition_time = 0   # aquisition time in seconds
 
 
-    def load_image(self,fname,long_output=False):
+    def load_image(self,fname,output_info=1):
         """loads nanonis SPM data from an sxm file."""
         ext = fname.rsplit(".",1)[-1]
         if  ext == "sxm":
             self.__init__()
-            self._load_image_header(fname,long_output)
-            self._load_image_body(fname,long_output)
+            self._load_image_header(fname,output_info)
+            self._load_image_body(fname,output_info)
         else:
             print("Error: Unknown file type \"%s\"." % ext)
             return False
@@ -203,10 +203,10 @@ class ImageData(object):
             return lines
 
 
-    def _load_image_header(self,fname,long_output):
+    def _load_image_header(self,fname,output_info):
         """load header data from a .sxm file"""
 
-        print('Reading header of %s' % fname)
+        if output_info>0: print('Reading header of %s' % fname)
         if PYTHON_VERSION>=3:
             f = open(fname, encoding='utf-8', errors='ignore')
         else:
@@ -242,11 +242,11 @@ class ImageData(object):
         self.acquisition_time = float(self.header['acq_time'])
 
 
-    def _load_image_body(self,fname,long_output):
+    def _load_image_body(self,fname,output_info):
         """load body data from a .sxm file"""
 
         # extract channels to be read in
-        print('Reading body of %s' % fname)
+        if output_info>0: print('Reading body of %s' % fname)
         xPixels, yPixels = self.pixelsize
         data_info = self.header['data_info']
         lines = data_info.split('\n')
@@ -284,7 +284,7 @@ class ImageData(object):
             if self.scan_direction == "down":
                 data = np.flipud(data)
             channel = {'data_header': {'name': names[int(i/2)]+direction, 'unit': units[int(i/2)]}, 'data': data}
-            if long_output:
+            if output_info>1:
                 print("  read: %s in %s, shape: %s" % channel['data_header'].name, channel['data_header'].unit, channel['data'].shape)
             self.channels.append(channel)
             self.channel_names.append(channel['data_header']['name'])
