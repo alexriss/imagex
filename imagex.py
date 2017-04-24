@@ -23,6 +23,7 @@ import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
 import mpl_toolkits.axes_grid1
+import scipy.ndimage.interpolation
 import skimage.measure
 import ipywidgets
 import datetime
@@ -51,9 +52,9 @@ class ImageData(object):
         self.channels = []         # list holding a dictionary with data_header (names, units and the swept channels) and data (np.array of the actual data)
         self.channel_names = []    # list holding the channel names
         
-        self.scansize = (0,0)      # scan size
+        self.scansize = [0,0]      # scan size
         self.scansize_unit = ""    # unit for scansize (e.g. nm)
-        self.pixelsize = (0,0)     # scan size in pixels
+        self.pixelsize = [0,0]     # scan size in pixels
         self.scan_direction = ""   # scan direction ("up" or "down")
         
         self.start_time = datetime.date.today() # start time of scan
@@ -203,6 +204,38 @@ class ImageData(object):
             return lines
 
 
+    def super_lattice(self, data, lattice_vectors, origin, output_size, interpolation_order=1):
+        """Creates super lattice by repeating image according to given lattice vectors
+        
+        Parameters:
+        - data: numpy array containing the original 2d data
+        - lattice_vectors: lattice vectros in 2d that specify the translational symmetry
+        - origin: origin of 
+        - output_size: output_size of generated image in nm
+        - interpolation: spline interpolation order for picking values from original array
+        
+        The parameters lattice_vectors, origin, output_size are specified in x,y format, i.e. col first, then row.
+        
+        Returns:
+        - numpy array: new stitched image
+        """
+        
+        super_data_size = np.rint(np.array(self.nm_to_pixels(output_size[::-1]))).astype(np.int)  # the [::-1] transforms from x,y into row, col format
+        super_data_interpolation_indices = np.indices(super_data_size)
+        
+        lattice_vectors_px = np.array([self.nm_to_pixels(lattice_vectors[0][::-1]), self.nm_to_pixels(lattice_vectors[1][::-1])])  # the [::-1] transforms from x,y into row, col format
+        origin_px = np.array(self.nm_to_pixels(origin[::-1]))  # the [::-1] transforms from x,y into row, col format
+        
+        for j in range(0, super_data_size[0]):
+            for i in range(0, super_data_size[1]):
+                lattice_coord = np.matmul(np.linalg.inv(lattice_vectors_px).T, np.array([j,i]).T).T % 1    # the %1 ensures we are always between 0 and 1
+                px_coord = np.matmul(lattice_vectors_px.T, lattice_coord)
+                super_data_interpolation_indices[0,j,i] = px_coord[0] + origin_px[0]
+                super_data_interpolation_indices[1,j,i] = px_coord[1] + origin_px[1]
+            
+        return scipy.ndimage.interpolation.map_coordinates(data, super_data_interpolation_indices, order=interpolation_order, mode='nearest')
+                
+        
     def _load_image_header(self,fname,output_info):
         """load header data from a .sxm file"""
 
@@ -232,10 +265,10 @@ class ImageData(object):
         f.close()
         
         x_len, y_len = self.header['scan_range'].split()
-        self.scansize = (float(x_len)*1e9, float(y_len)*1e9)  # convert to nm
+        self.scansize = [float(x_len)*1e9, float(y_len)*1e9]  # convert to nm
         self.scansize_unit = 'nm'
         xPixels, yPixels = self.header['scan_pixels'].split()
-        self.pixelsize = (int(xPixels), int(yPixels))
+        self.pixelsize = [int(xPixels), int(yPixels)]
         self.scan_direction = self.header['scan_dir']
         
         self.start_time = datetime.datetime.strptime(self.header['rec_date'] + " " + self.header['rec_time'], '%d.%m.%Y %H:%M:%S')
@@ -296,7 +329,7 @@ class ImageData(object):
         if isinstance(p, (int, float)):
             return p/self.scansize[0]*self.pixelsize[0]
         elif isinstance(p, (list, tuple, np.ndarray)) and len(p)==2:
-            return (p[0]/self.scansize[0]*self.pixelsize[0], p[1]/self.scansize[1]*self.pixelsize[1])
+            return [p[0]/self.scansize[0]*self.pixelsize[0], p[1]/self.scansize[1]*self.pixelsize[1]]
         else:
             raise ValueError('The input to nm_to_pixels should either be a single number or x,y coordinates.')
             
@@ -306,7 +339,7 @@ class ImageData(object):
         if isinstance(p, (int, float)):
             return p*self.scansize[0]/self.pixelsize[0]
         elif isinstance(p, (list, tuple, np.ndarray)) and len(p)==2:
-            return (p[0]*self.scansize[0]/self.pixelsize[0], p[1]*self.scansize[1]/self.pixelsize[1])
+            return [p[0]*self.scansize[0]/self.pixelsize[0], p[1]*self.scansize[1]/self.pixelsize[1]]
         else:
             raise ValueError('The input to pixels_to_nm should either be a single number or x,y coordinates.')
 
