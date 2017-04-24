@@ -16,17 +16,18 @@ parts of the load-file function are based on code from the Nanonis manual, writt
 
 from __future__ import print_function
 from __future__ import division
-import sys
-import re
-import struct
+import datetime
+import ipywidgets
+import itertools
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
 import mpl_toolkits.axes_grid1
+import re
 import scipy.ndimage.interpolation
 import skimage.measure
-import ipywidgets
-import datetime
+import struct
+import sys
 
 
 import seaborn as sns
@@ -204,6 +205,34 @@ class ImageData(object):
             return lines
 
 
+    def subtract_plane(self, data, points_plane, interpolation_order=1):
+        """Performs plane subtraction from the data
+
+        Parameters:
+        - data: numpy array containing the original 2d data
+        - points_plane: x,y coordinates spanning the plane (col first, then row)
+        - interpolation_order: spline interpolation order for picking values from original array
+
+        Returns:
+        - numpy array: plane-subtracted data
+        """
+
+        points_plane_px = np.array([self.nm_to_pixels(p) for p in points_plane])
+        col_px = points_plane_px[:,0]
+        row_px = points_plane_px[:,1]
+        z = scipy.ndimage.interpolation.map_coordinates(data, [row_px,col_px], order=interpolation_order, mode='nearest')
+       
+        # regression
+        A = np.c_[row_px, col_px, np.ones(row_px.shape[0])]
+        C,_,_,_ = scipy.linalg.lstsq(A, z)
+        
+        # evaluate it on grid
+        data_indices = np.indices(data.shape)
+        
+        zz = C[0]*data_indices[0] + C[1]*data_indices[1] + C[2]
+        return data-zz
+        
+    
     def super_lattice(self, data, lattice_vectors, origin, output_size, interpolation_order=1):
         """Creates super lattice by repeating image according to given lattice vectors
         
