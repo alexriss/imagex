@@ -18,7 +18,6 @@ from __future__ import print_function
 from __future__ import division
 import datetime
 import ipywidgets
-import itertools
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
