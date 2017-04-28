@@ -6,7 +6,7 @@ SPM image import and analysis
 Class to read Nanonis sxm files (SPM images). Currently not much analysis (yet).
 
 
-2016, Alex Riss, GPL
+2017, Alex Riss, GPL
 
 parts of the load-file function are based on code from the Nanonis manual, written by Felix Wählisch (Beer-ware license).
 
@@ -27,6 +27,7 @@ import scipy.ndimage.interpolation
 import skimage.measure
 import struct
 import sys
+import zlib
 
 
 import seaborn as sns
@@ -66,8 +67,12 @@ class ImageData(object):
         ext = fname.rsplit(".",1)[-1]
         if  ext == "sxm":
             self.__init__()
-            self._load_image_header(fname,output_info)
-            self._load_image_body(fname,output_info)
+            self._load_image_header_nanonis(fname,output_info)
+            self._load_image_body_nanonis(fname,output_info)
+        elif ext == 'dat':
+            self.__init__()
+            self._load_image_header_createc(fname,output_info)
+            self._load_image_body_createc(fname,output_info)
         else:
             print("Error: Unknown file type \"%s\"." % ext)
             return False
@@ -264,7 +269,7 @@ class ImageData(object):
         return scipy.ndimage.interpolation.map_coordinates(data, super_data_interpolation_indices, order=interpolation_order, mode='nearest')
                 
         
-    def _load_image_header(self,fname,output_info):
+    def _load_image_header_nanonis(self,fname,output_info):
         """load header data from a .sxm file"""
 
         if output_info>0: print('Reading header of %s' % fname)
@@ -303,7 +308,7 @@ class ImageData(object):
         self.acquisition_time = float(self.header['acq_time'])
 
 
-    def _load_image_body(self,fname,output_info):
+    def _load_image_body_nanonis(self,fname,output_info):
         """load body data from a .sxm file"""
 
         # extract channels to be read in
@@ -345,6 +350,97 @@ class ImageData(object):
             if self.scan_direction == "down":
                 data = np.flipud(data)
             channel = {'data_header': {'name': names[int(i/2)]+direction, 'unit': units[int(i/2)]}, 'data': data}
+            if output_info>1:
+                print("  read: %s in %s, shape: %s" % channel['data_header'].name, channel['data_header'].unit, channel['data'].shape)
+            self.channels.append(channel)
+            self.channel_names.append(channel['data_header']['name'])
+        f.close()
+
+
+    def _load_image_header_createc(self,fname,output_info):
+        """load header data from a createc .dat file"""
+
+        if output_info>0: print('Reading header of %s' % fname)
+        if PYTHON_VERSION>=3:
+            f = open(fname, encoding='utf-8', errors='ignore')
+        else:
+            f = open(fname)
+        header_ended = False
+        caption = re.compile(':*:')
+        key = ''
+        contents = ''
+        while not header_ended:
+            line = f.readline()
+            if not line: break
+            if line[0:11] == "PSTMAFM.EXE":  # end of header
+                header_ended = True
+                self.header[key] = contents
+            else:
+                parts = line.split('=')
+                if len(parts)!=2: continue
+                key, contents = parts
+                line = line.strip()
+                key = string_simplify(key)  # set new name
+                self.header[key] = contents.strip()
+                # [todo: add some parsing here]
+        f.close()
+        
+        x_len, y_len = self.header['length_x[a]'], self.header['length_y[a]']
+        self.scansize = [float(x_len)/10, float(y_len)/10]  # convert to nm
+        self.scansize_unit = 'nm'
+        xPixels, yPixels = self.header['num.x_/_num.x'], self.header['num.y_/_num.y']
+        self.pixelsize = [int(xPixels), int(yPixels)]
+        self.scan_direction = 'down'
+        
+        # todo: get these values if possible
+        #self.start_time = datetime.datetime.strptime(self.header['rec_date'] + " " + self.header['rec_time'], '%d.%m.%Y %H:%M:%S')
+        #self.acquisition_time = float(self.header['acq_time'])
+
+
+    def _load_image_body_createc(self,fname,output_info):
+        """load body data from a createc .dat file"""
+
+        # extract channels to be read in
+        if output_info>0: print('Reading body of %s' % fname)
+        xPixels, yPixels = self.pixelsize
+        
+        z_conv = float(self.header['dacto[a]z'])  # conversion for z scale
+        z_gain = float(self.header['gainz_/_gainz']) # gain
+
+        #todo: get channels
+        # for now set it manually
+        names = ['z']
+        units = ['nm']
+        
+        # todo: check if [Paramco32]
+        
+        f = open(fname, 'rb') #read binary
+        read_all = f.read()
+        offset = read_all.find(bytearray('DATA', encoding='ascii'))
+        f.seek(offset+4)  # data start 6 bytes afterwards
+        read_all = f.read()
+        
+        data_array = zlib.decompress(read_all)
+        fmt = '<f' # float
+        ItemSize = struct.calcsize(fmt)
+        
+        extra_offset = 4
+
+        for i in range(len(names)):
+            data = np.zeros(xPixels*yPixels)
+            for j in range(xPixels*yPixels):
+                data[j] = struct.unpack(fmt, data_array[extra_offset + j*ItemSize: extra_offset + j*ItemSize+ItemSize])[0]
+            data = data.reshape(yPixels, xPixels)
+
+            direction = '_fwd'
+
+            # lets see if we need it
+            if self.scan_direction == "down":
+                data = np.flipud(data)
+
+            if names[i] == 'z': data = data * z_conv * z_gain / 10  # convert to nm
+            channel = {'data_header': {'name': names[i]+direction, 'unit': units[i]}, 'data': data}
+
             if output_info>1:
                 print("  read: %s in %s, shape: %s" % channel['data_header'].name, channel['data_header'].unit, channel['data'].shape)
             self.channels.append(channel)
