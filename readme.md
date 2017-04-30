@@ -1,6 +1,8 @@
 # imag*ex*
 
-Python scripts to analyze scanning probe images. It currently works for Nanonis sxm files.
+Python scripts to analyze scanning probe images.
+
+It currently works with Nanonis sxm files. Some preliminary support for CreaTec dat files has been added recently.
 
 
 ## Related projects
