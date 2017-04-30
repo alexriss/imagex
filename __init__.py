@@ -1,3 +1,4 @@
-__all__ = ["search"]
+__all__ = ["feature", "colormap"]
 from .imagex import *
-from . import feature
+from . import colormap as cm
+#from . import feature
