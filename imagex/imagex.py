@@ -17,6 +17,7 @@ parts of the load-file function are based on code from the Nanonis manual, writt
 from __future__ import print_function
 from __future__ import division
 import datetime
+import imagex.colormap as cm
 import ipywidgets
 import numpy as np
 import matplotlib
@@ -37,11 +38,6 @@ sns.set(rc={'axes.facecolor':'white', 'figure.facecolor':'white'})
 
 PYTHON_VERSION = sys.version_info.major
 
-cdict = {'red':   ((0.0, 0.0, 0.0),(1.0, 1.0, 1.0)),
-         'green': ((0.0, 0.0, 0.0),(1.0, 1.0, 1.0)),
-         'blue':  ((0.0, 0.0, 0.0),(1.0, 1.0, 1.0),)}
-greys_linear = matplotlib.colors.LinearSegmentedColormap('greys_linear', cdict)  # always have trouble with the brightness values
-#plt.register_cmap(cmap=greys_linear)
 
 
 class ImageData(object):
@@ -127,7 +123,7 @@ class ImageData(object):
             z_orig = z
             z = z - np.amin(z)
 
-        if cmap=='': cmap=greys_linear
+        if cmap=='': cmap=cm.greys_linear
 
         if axes == None:
             fig = plt.figure()
