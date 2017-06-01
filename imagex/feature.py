@@ -27,7 +27,7 @@ class Finder(object):
     
     
     def plot_needle(self, coordinate, rotation, peak_value=None):
-        """plots needle from haystack image"""
+        """Plots needle from haystack image."""
         
         # clear previous stuff
         if len(self.ax_needle.images)>0:
@@ -88,10 +88,10 @@ class Finder(object):
 
 
     def plot_coordinates(self, coordinates, rotations, peak_values=[], i_needle=-1):
-        """plots the coordinates of the found needles in haystack.
+        """Plots the coordinates of the found needles in haystack.
         Parameter coordinates gives the x,y positions corresponding to the center of the match (as obtained by skimage.match_template(pad_input=True)).
-        Parameter rotation gives the corresponding rotations of the matches."""
-        
+        Parameter rotation gives the corresponding rotations of the matches.
+        """
         # remove the previous patches from the plot
         for c in self.ax_haystack.collections[::-1]:
             c.remove()
