@@ -433,6 +433,8 @@ class ImageData(object):
         caption = re.compile(':*:')
         key = ''
         contents = ''
+        firstline = f.readline().strip()
+        self.fileformat = firstline
         while not header_ended:
             line = f.readline()
             if not line: break
@@ -471,6 +473,9 @@ class ImageData(object):
         Raises:
             NotImplementedError: When the file extension is not known.  // [todo]
         """
+        if self.fileformat != "[Paramco32]": # 32 bit compressed
+            raise NotImplementedError('Reading of data in files saved in %s- format is not implemented yet.' % self.fileformat)
+            
         import zlib
 
         # extract channels to be read in
@@ -479,14 +484,24 @@ class ImageData(object):
         
         z_conv = float(self.header['dacto[a]z'])  # conversion for z scale
         z_gain = float(self.header['gainz_/_gainz']) # gain
+        
+        preamp_fac = 10**float(self.header['gainpreamp_/_gainpre_10^'])
 
-        #todo: get channels
-        # for now set it manually
-        names = ['z']
-        units = ['nm']
+        num_chan = int(self.header['channels_/_channels']) # number of channels
+        config_chan = int(self.header['chan(1,2,4)_/_chan(1,2,4)']) # configuration channels 1: topo, 2: topo+current, 4: topo+current+adc1+adc2
         
-        # todo: check if [Paramco32]
-        
+        names_temp = ['z_fwd','current_fwd','adc1_fwd','adc2_fwd']
+        names_temp_back = ['z_bwd','current_bwd','adc1_bwd','adc2_bwd']
+        units_temp = ['nm','a.u.','mV','mV']  # current should be nA, but dont know how to get the conversion right so far, also I am not sure about the mV of adc1 and adc2.
+        names = []
+        units = []
+        for j in range(config_chan):
+            names.append(names_temp[j])
+            units.append(units_temp[j])
+        if num_chan == 2*config_chan:  # there are backwards scans
+            names_back = [n.replace('_fwd', '_bwd') for n in names]
+            names = names + names_back
+            units = units + units
         f = open(fname, 'rb') #read binary
         read_all = f.read()
         offset = read_all.find(bytearray('DATA', encoding='ascii'))
@@ -496,23 +511,24 @@ class ImageData(object):
         data_array = zlib.decompress(read_all)
         fmt = '<f' # float
         ItemSize = struct.calcsize(fmt)
-        
         extra_offset = 4
 
         for i in range(len(names)):
             data = np.zeros(xPixels*yPixels)
             for j in range(xPixels*yPixels):
-                data[j] = struct.unpack(fmt, data_array[extra_offset + j*ItemSize: extra_offset + j*ItemSize+ItemSize])[0]
+                data[j] = struct.unpack(fmt,
+                    data_array[extra_offset + i*ItemSize*xPixels*yPixels + j*ItemSize:
+                    extra_offset + i*ItemSize*xPixels*yPixels + j*ItemSize+ItemSize])[0]
             data = data.reshape(yPixels, xPixels)
-
-            direction = '_fwd'
 
             # lets see if we need it
             if self.scan_direction == "down":
                 data = np.flipud(data)
-
-            if names[i] == 'z': data = data * z_conv * z_gain / 10  # convert to nm
-            channel = {'data_header': {'name': names[i]+direction, 'unit': units[i]}, 'data': data}
+            if names[i][0] == 'z':
+                data = data * z_conv * z_gain / 10  # convert to nm
+            elif names[i][0] == 'c':
+                data = data / preamp_fac # todo: this conversion does not seem right
+            channel = {'data_header': {'name': names[i], 'unit': units[i]}, 'data': data}
 
             if output_info>1:
                 print("  read: %s in %s, shape: %s" % channel['data_header'].name, channel['data_header'].unit, channel['data'].shape)
@@ -561,6 +577,77 @@ class ImageData(object):
             raise ValueError('The input to pixels_to_nm should either be a single number or x,y coordinates.')
 
     
+def save_image(filename, data, cmap=cm.greys_linear, **kwargs):
+    """Saves 2D image data as an image to a file.
+    
+    Args:
+        filename: A string containing a path to a filename, or a Python file-like object. 
+        data (numpy array): The image data in a 2D (row/column = y,x) format.
+        **kwargs: Additional kwargs to be passed to matplotlib.image.imsave.
+    """
+    matplotlib.image.imsave(filename, data, cmap=cmap,  **kwargs)
+
+    
+def save_figure(fig, filename, dpi=100, pad_inches=0, bbox_inches="tight", transparent=True, figsize=(), **kwargs):
+    """Saves matplotlib figure object to a graphics file.
+    
+    Args:
+        fig: Matplotlib figure object.
+        filename: A string containing a path to a filename, or a Python file-like object. 
+        dpi: Resolution in dots per inch for the output file.
+        pad_inches: see matplotlib.pyplot.savefig.
+        bbox_inches: see matplotlib.pyplot.savefig.
+        transparent: see matplotlib.pyplot.savefig.
+        figsize: tuple specifying the width and height in inches.
+        **kwargs: Additional kwargs to be passed to matplotlib.pyplot.savefig.
+    """
+    if len(figsize)==2:
+        figsize_orig = fig.get_size_inches()
+        fig.set_size_inches(figsize)
+    fig.savefig(filename, dpi=dpi, pad_inches=pad_inches, bbox_inches=bbox_inches, transparent=transparent, **kwargs)
+    if len(figsize)==2:
+        fig.set_size_inches(figsize_orig)
+
+
+def images_colorscale(axs_list, min, max):
+    """Sets the color scale for the images in the axes.
+    Args:
+        axs_list: List of matplotlib axes objects containing images.
+        min (float): Minimum value of color scale.
+        max (float): Maximum value of color scale.
+    """
+    for ax in axs_list:
+        for im in ax.images:
+            im.set_clim(vmin=min, vmax=max)
+            im.cmap.set_under('#0000ff')
+            im.cmap.set_over('#ff0000')
+        
+        
+def images_colorscale_sliders(axs_list, scale_step_size=0.01, display=True):
+    """Creates ipywidget sliders to scale the 0th image for each axes in axs_list.
+    
+    Args:
+        axs_list: List of matplotlib axes objects containing images.
+        scale_step_size: The step size for the sliders to use.
+        display: Specifies whether the ipywsliders will be displayed or returned.
+
+    Returns:
+        ipywidgets object: If display is False. If display is True, the widgets will be directly diplayed.
+    """
+    ias = []
+    for ax in axs_list:
+        scale_min, scale_max = ax.images[0].get_clim()
+        ia = ipywidgets.interactive(images_scale,
+                    min=ipywidgets.widgets.FloatSlider(min=scale_min,max=scale_max+scale_step_size,step=scale_step_size,value=scale_min),
+                    max=ipywidgets.widgets.FloatSlider(min=scale_min,max=scale_max+scale_step_size,step=scale_step_size,value=scale_max),
+                    axs_list=ipywidgets.widgets.fixed([ax]))
+        ias.append(ia)
+    if display:
+        IPython.display.display(ipywidgets.HBox(ias))
+    else:
+        return ias
+
+
 def get_distance(p1,p2):
     """Calculates the Euclidean distance between two points
     
