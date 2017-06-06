@@ -45,12 +45,12 @@ class ImageData(object):
         self.header = {}           # dictionary containing all the header data
         self.channels = []         # list holding a dictionary with data_header (names, units and the swept channels) and data (np.array of the actual data)
         self.channel_names = []    # list holding the channel names
-        
+
         self.scansize = [0,0]      # scan size
         self.scansize_unit = ""    # unit for scansize (e.g. nm)
         self.pixelsize = [0,0]     # scan size in pixels
         self.scan_direction = ""   # scan direction ("up" or "down")
-        
+
         self.start_time = datetime.date.today() # start time of scan
         self.acquisition_time = 0   # aquisition time in seconds
 
@@ -60,7 +60,7 @@ class ImageData(object):
         Args:
             fname (str): Filename of the data file to read.
             output_info (int): Specifies the amount of output info to print to stdout when reading the files. 0 for no output, 1 for limited output, 2 for detailed output.
-            
+
         Raises:
             NotImplementedError: When the file extension is not known.
         """
@@ -82,10 +82,10 @@ class ImageData(object):
         """Gets the channel dictionary for channel_name
         Args:
             channel_name (str): string specifying the channel name to return
-            
+
         Returns:
             dict: dictionary containing the information and date corresponding to channel_name.
-        
+
         Raises:
             ValueError: When channel_name is not found.
         """
@@ -102,10 +102,10 @@ class ImageData(object):
         return self.channels[i_channel]
 
 
-      
+
     def plot_image(self, channel_name, cmap='', interpolation="bicubic", background="none", no_labels=False, pixel_units=False, output_filename="", output_dpi=100, alpha=1, axes=None, extra_output=True, **kwargs):
         """Plots channel data.
-        
+
         Args:
             channel_name (str): name of the channel to plot.
             cmap: Matplotlib colormap to use (see the cmap-parameter in matplotlib.axes.Axes.imshow for more information).
@@ -119,23 +119,23 @@ class ImageData(object):
             extra_output: Specifies whether detailed output should be printed to stdout.
             axes: Matplotlib axes object to use for plot output. If no axes is given, a new matplotlib Figure object will be created for the plot.
             **kwargs: Any additional keyword arguments to be passed to matplotlib.axes.Axes.imshow.
-        
+
         Returns:
             matplotlib figure: If no axes is given,  a new matplotlib Figure object will be created for the plot and returned.
         """
         channel = self.get_channel(channel_name)
         if channel is False: return False
-        
+
         # z = np.fliplr(np.rot90(self.channels[i_channel]['data'], k=1))
         z = channel['data']
         unit = channel['data_header']['unit']
         name = channel['data_header']['name']
         return self.plot_data(z, name=name, unit=unit, cmap=cmap, interpolation=interpolation, background=background, no_labels=no_labels, pixel_units=pixel_units, output_filename=output_filename, output_dpi=output_dpi, alpha=alpha, axes=axes, extra_output=extra_output, **kwargs)
-        
-            
+
+
     def plot_data(self, data, name="", unit="", cmap='', interpolation="bicubic", background="none", no_labels=False, pixel_units=False, output_filename="", output_dpi=100, alpha=1, axes=None, extra_output=True, **kwargs):
         """Plots 2D data.
-        
+
         Args:
             data (numpy array): 2D data in row/column=y,x format.
             name (str): Specifies the axes title.
@@ -151,11 +151,11 @@ class ImageData(object):
             extra_output: Specifies whether detailed output should be printed to stdout.
             axes: Matplotlib axes object to use for plot output. If no axes is given, a new matplotlib Figure object will be created for the plot.
             **kwargs: Any additional keyword arguments to be passed to matplotlib.axes.Axes.imshow.
-        
+
         Returns:
             matplotlib figure: If no axes is given,  a new matplotlib Figure object will be created for the plot and returned.
         """
-    
+
         if not pixel_units: x_len, y_len = self.scansize[0], self.scansize[1]
         z = data
         # if unit == 'm':
@@ -180,7 +180,7 @@ class ImageData(object):
             plt.sca(ax)
         img = ax.imshow(z, cmap=cmap, aspect='equal', interpolation=interpolation, origin='lower', picker=True, alpha=alpha, **kwargs)
         if not pixel_units: plt.setp(img, extent=(0,x_len,0,y_len))
-        
+
         ax.grid(False)
         if no_labels:
             ax.set_axis_off()
@@ -199,15 +199,15 @@ class ImageData(object):
             if background != "none":
                 fig_title += "; background correction: %s" % background
             ax.set_title(fig_title)
-           
+
             #divider = mpl_toolkits.axes_grid1.make_axes_locatable(plt.gca())
             #cax = divider.append_axes("right", "5%", pad="3%")
             #cbar = plt.colorbar(img, cax=cax)
-            #cbar.ax.tick_params(labelsize=8) 
-            
+            #cbar.ax.tick_params(labelsize=8)
+
             cbar = plt.colorbar(img, fraction=0.046, pad=0.04) # fraction=0.046, pad=0.04, shrink=0.8
             #cbar.set_label(name+' ['+unit+']')
-        
+
         if extra_output: print("%s: min=%s%s, max=%s%s" % (name, np.amin(z), unit, np.amax(z), unit))
         if background != "none":
             if extra_output: print("%s (without background correction): min=%s%s, max=%s%s" % (name, np.amin(z_orig), unit, np.amax(z_orig), unit))
@@ -216,32 +216,32 @@ class ImageData(object):
             if extra_output: print("Saved: %s" % output_filename)
 
         if axes == None: return fig
-        
-        
+
+
     def line_profile(self, data, points=[], linewidth=1, outside_range='constant'):
         """Calculates a line profile along the points array (x,y coordinates in nm units) of certain width.
-        
+
         Args:
             data (numpy array): The image data in a 2D (row/column = y,x) format.
             points: List of points in nm coordinates (x,y), fow which the line profile should be calculated.
             linewidth (float): Linewidth in pixel values.
             outside_range: Specifies how to treat potential values outside of the input data array. See the mode-parameter in skimage.measure.profile_line.
-            
+
         Returns:
             lines: np array of positions and corresponding image-values. If more than 2 points are given,m a list of lines is returned corresponding to the line-data for the sections between the points.
-            
+
         """
         if len(points)<2:
             print("Error: at least two points are needed for the line profile.")
             return False
-        
+
         points_px = []
         for p in points:
             points_px.append(self.nm_to_pixels(p))
-            
+
         lines = []
         x_pos = 0
-        
+
         for i in range(len(points)-1):
             p1 = (points_px[i][1], points_px[i][0])       # for the profile_line function we need row first (i.e. the y coordinate), then the column (i.e. the x coordinate)
             p2 = (points_px[i+1][1], points_px[i+1][0])
@@ -250,7 +250,7 @@ class ImageData(object):
             x = np.linspace(x_pos, line_length, len(y))
             x_pos += line_length
             lines.append(np.array([x,y]))
-        
+
         if len(lines) == 1:
             return lines[0]
         else:
@@ -273,53 +273,53 @@ class ImageData(object):
         col_px = points_plane_px[:,0]
         row_px = points_plane_px[:,1]
         z = scipy.ndimage.interpolation.map_coordinates(data, [row_px,col_px], order=interpolation_order, mode='nearest')
-       
+
         # regression
         A = np.c_[row_px, col_px, np.ones(row_px.shape[0])]
         C,_,_,_ = scipy.linalg.lstsq(A, z)
-        
+
         # evaluate it on grid
         data_indices = np.indices(data.shape)
-        
+
         zz = C[0]*data_indices[0] + C[1]*data_indices[1] + C[2]
         return data-zz
-        
-    
+
+
     def super_lattice(self, data, lattice_vectors, origin, output_size, interpolation_order=1):
         """Creates super lattice by repeating image according to given lattice vectors
-        
+
         Args:
             data: numpy array containing the original 2d data
             lattice_vectors: lattice vectros in 2d that specify the translational symmetry
-            origin: origin of 
+            origin: origin of
             output_size: output_size of generated image in nm
             interpolation: spline interpolation order for picking values from original array
-        
+
             The parameters lattice_vectors, origin, output_size are specified in x,y format, i.e. col first, then row.
-        
+
         Returns:
             numpy array: new stitched image
         """
-        
+
         super_data_size = np.rint(np.array(self.nm_to_pixels(output_size[::-1]))).astype(np.int)  # the [::-1] transforms from x,y into row, col format
         super_data_interpolation_indices = np.indices(super_data_size)
-        
+
         lattice_vectors_px = np.array([self.nm_to_pixels(lattice_vectors[0][::-1]), self.nm_to_pixels(lattice_vectors[1][::-1])])  # the [::-1] transforms from x,y into row, col format
         origin_px = np.array(self.nm_to_pixels(origin[::-1]))  # the [::-1] transforms from x,y into row, col format
-        
+
         for j in range(0, super_data_size[0]):
             for i in range(0, super_data_size[1]):
                 lattice_coord = np.matmul(np.linalg.inv(lattice_vectors_px).T, np.array([j,i]).T).T % 1    # the %1 ensures we are always between 0 and 1
                 px_coord = np.matmul(lattice_vectors_px.T, lattice_coord)
                 super_data_interpolation_indices[0,j,i] = px_coord[0] + origin_px[0]
                 super_data_interpolation_indices[1,j,i] = px_coord[1] + origin_px[1]
-            
+
         return scipy.ndimage.interpolation.map_coordinates(data, super_data_interpolation_indices, order=interpolation_order, mode='nearest')
-                
-        
+
+
     def _load_image_header_nanonis(self,fname,output_info):
         """Loads header data from a .sxm file
-        
+
         Args:
             fname (str): Filename of the data file to read.
             output_info (int): Specifies the amount of output info to print to stdout when reading the files. 0 for no output, 1 for limited output, 2 for detailed output.
@@ -349,21 +349,21 @@ class ImageData(object):
                     contents+=(line)
                 # [todo: add some parsing here]
         f.close()
-        
+
         x_len, y_len = self.header['scan_range'].split()
         self.scansize = [float(x_len)*1e9, float(y_len)*1e9]  # convert to nm
         self.scansize_unit = 'nm'
         xPixels, yPixels = self.header['scan_pixels'].split()
         self.pixelsize = [int(xPixels), int(yPixels)]
         self.scan_direction = self.header['scan_dir']
-        
+
         self.start_time = datetime.datetime.strptime(self.header['rec_date'] + " " + self.header['rec_time'], '%d.%m.%Y %H:%M:%S')
         self.acquisition_time = float(self.header['acq_time'])
 
 
     def _load_image_body_nanonis(self,fname,output_info):
         """Loads body data from a .sxm file.
-        
+
         Args:
             fname (str): Filename of the data file to read.
             output_info (int): Specifies the amount of output info to print to stdout when reading the files. 0 for no output, 1 for limited output, 2 for detailed output.
@@ -416,11 +416,11 @@ class ImageData(object):
 
     def _load_image_header_createc(self,fname,output_info):
         """Loads header data from a createc .dat file
-        
+
         Args:
             fname (str): Filename of the data file to read.
             output_info (int): Specifies the amount of output info to print to stdout when reading the files. 0 for no output, 1 for limited output, 2 for detailed output.
-            
+
         Raises:
             NotImplementedError: When the file extension is not known.  // [todo]
         """
@@ -450,14 +450,14 @@ class ImageData(object):
                 self.header[key] = contents.strip()
                 # [todo: add some parsing here]
         f.close()
-        
+
         x_len, y_len = self.header['length_x[a]'], self.header['length_y[a]']
         self.scansize = [float(x_len)/10, float(y_len)/10]  # convert to nm
         self.scansize_unit = 'nm'
         xPixels, yPixels = self.header['num.x_/_num.x'], self.header['num.y_/_num.y']
         self.pixelsize = [int(xPixels), int(yPixels)]
         self.scan_direction = 'down'
-        
+
         # todo: get these values if possible
         #self.start_time = datetime.datetime.strptime(self.header['rec_date'] + " " + self.header['rec_time'], '%d.%m.%Y %H:%M:%S')
         #self.acquisition_time = float(self.header['acq_time'])
@@ -465,34 +465,34 @@ class ImageData(object):
 
     def _load_image_body_createc(self,fname,output_info):
         """Loads body data from a createc .dat file
-        
+
         Args:
             fname (str): Filename of the data file to read.
             output_info (int): Specifies the amount of output info to print to stdout when reading the files. 0 for no output, 1 for limited output, 2 for detailed output.
-            
+
         Raises:
             NotImplementedError: When the file extension is not known.  // [todo]
         """
         if self.fileformat != "[Paramco32]": # 32 bit compressed
             raise NotImplementedError('Reading of data in files saved in %s- format is not implemented yet.' % self.fileformat)
-            
+
         import zlib
 
         # extract channels to be read in
         if output_info>0: print('Reading body of %s' % fname)
         xPixels, yPixels = self.pixelsize
-        
+
         z_conv = float(self.header['dacto[a]z'])  # conversion for z scale
         z_gain = float(self.header['gainz_/_gainz']) # gain
-        
+
         preamp_fac = 10**float(self.header['gainpreamp_/_gainpre_10^'])
+        z_piezo_const = float(self.header['zpiezoconst'])
 
         num_chan = int(self.header['channels_/_channels']) # number of channels
         config_chan = int(self.header['chan(1,2,4)_/_chan(1,2,4)']) # configuration channels 1: topo, 2: topo+current, 4: topo+current+adc1+adc2
-        
+
         names_temp = ['z_fwd','current_fwd','adc1_fwd','adc2_fwd']
-        names_temp_back = ['z_bwd','current_bwd','adc1_bwd','adc2_bwd']
-        units_temp = ['nm','a.u.','mV','mV']  # current should be nA, but dont know how to get the conversion right so far, also I am not sure about the mV of adc1 and adc2.
+        units_temp = ['nm','nA.','mV','mV']  # I am not completely sure about the current conversion, also I am not sure about the mV of adc1 and adc2.
         names = []
         units = []
         for j in range(config_chan):
@@ -507,7 +507,7 @@ class ImageData(object):
         offset = read_all.find(bytearray('DATA', encoding='ascii'))
         f.seek(offset+4)  # data start 6 bytes afterwards
         read_all = f.read()
-        
+
         data_array = zlib.decompress(read_all)
         fmt = '<f' # float
         ItemSize = struct.calcsize(fmt)
@@ -527,7 +527,7 @@ class ImageData(object):
             if names[i][0] == 'z':
                 data = data * z_conv * z_gain / 10  # convert to nm
             elif names[i][0] == 'c':
-                data = data / preamp_fac # todo: this conversion does not seem right
+                data = data / preamp_fac / z_piezo_const * z_conv
             channel = {'data_header': {'name': names[i], 'unit': units[i]}, 'data': data}
 
             if output_info>1:
@@ -536,16 +536,16 @@ class ImageData(object):
             self.channel_names.append(channel['data_header']['name'])
         f.close()
 
-        
+
     def nm_to_pixels(self, p):
         """Converts from nm to pixel coordinates. Input is either a single number or x,y coordinates.
-        
+
         Args:
             p: Either a single number (int, float) or xy coordinates (list, tuple, numpy array)
-            
+
         Returns:
             float or list: The converted number or xy coordinates.
-            
+
         Raises:
             ValueError: If the input coordinates do not correspond to the format specified above.
         """
@@ -555,17 +555,17 @@ class ImageData(object):
             return [p[0]/self.scansize[0]*self.pixelsize[0], p[1]/self.scansize[1]*self.pixelsize[1]]
         else:
             raise ValueError('The input to nm_to_pixels should either be a single number or x,y coordinates.')
-            
-            
+
+
     def pixels_to_nm(self, p):
         """Converts from pixel to nm coordinates. Input is either a single number or x,y coordinates.
-        
+
         Args:
             p: Either a single number (int, float) or xy coordinates (list, tuple, numpy array)
-            
+
         Returns:
             float or list: The converted number or xy coordinates.
-            
+
         Raises:
             ValueError: If the input coordinates do not correspond to the format specified above.
         """
@@ -576,24 +576,24 @@ class ImageData(object):
         else:
             raise ValueError('The input to pixels_to_nm should either be a single number or x,y coordinates.')
 
-    
+
 def save_image(filename, data, cmap=cm.greys_linear, **kwargs):
     """Saves 2D image data as an image to a file.
-    
+
     Args:
-        filename: A string containing a path to a filename, or a Python file-like object. 
+        filename: A string containing a path to a filename, or a Python file-like object.
         data (numpy array): The image data in a 2D (row/column = y,x) format.
         **kwargs: Additional kwargs to be passed to matplotlib.image.imsave.
     """
     matplotlib.image.imsave(filename, data, cmap=cmap,  **kwargs)
 
-    
+
 def save_figure(fig, filename, dpi=100, pad_inches=0, bbox_inches="tight", transparent=True, figsize=(), **kwargs):
     """Saves matplotlib figure object to a graphics file.
-    
+
     Args:
         fig: Matplotlib figure object.
-        filename: A string containing a path to a filename, or a Python file-like object. 
+        filename: A string containing a path to a filename, or a Python file-like object.
         dpi: Resolution in dots per inch for the output file.
         pad_inches: see matplotlib.pyplot.savefig.
         bbox_inches: see matplotlib.pyplot.savefig.
@@ -621,11 +621,11 @@ def images_colorscale(axs_list, min, max):
             im.set_clim(vmin=min, vmax=max)
             im.cmap.set_under('#0000ff')
             im.cmap.set_over('#ff0000')
-        
-        
+
+
 def images_colorscale_sliders(axs_list, scale_step_size=0.01, display=True):
     """Creates ipywidget sliders to scale the 0th image for each axes in axs_list.
-    
+
     Args:
         axs_list: List of matplotlib axes objects containing images.
         scale_step_size: The step size for the sliders to use.
@@ -650,36 +650,36 @@ def images_colorscale_sliders(axs_list, scale_step_size=0.01, display=True):
 
 def get_distance(p1,p2):
     """Calculates the Euclidean distance between two points
-    
+
     Args:
         p1, p2: Iterables of length n.
-        
+
     Returns:
         int: Calculated distance between p1 and p2 in n-dimensional space.
     """
     return np.sqrt(np.sum([(p1[i]-p2[i])**2 for i in range(len(p1))]))
 
-    
+
 def drifted_point(p, drift, elapsed_time):
     """Calculates the corrected coordinates of point p (any unit) taking into account drift (unit per time) and the elapsed time (time-units)
-    
+
     Args:
         p: Iterable of length 2 specifying the point coordinates in the xy plane.
         drift (float): Value of sptial drift in length units per time unit.
         elapsed_time (float): Elapsed time for which the drift correction should be calculated.
-        
+
     Returns:
         tuple: Drift-corrected coordinates of point p.
     """
     return (p[0] + drift[0]*elapsed_time, p[1] + drift[1]*elapsed_time)
 
-    
+
 def string_simplify(str):
     """Simplifies a string (i.e. removes replaces space for "_", and makes it lowercase
-    
+
     Args:
         str (str): Input string.
-        
+
     Returns:
         str: Simplified output string.
     """
