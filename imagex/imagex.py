@@ -12,8 +12,9 @@ Parts of the load-file function are based on code from the Nanonis manual, writt
 
 """
 
-from __future__ import print_function
+from __future__ import absolute_import
 from __future__ import division
+from __future__ import print_function
 import datetime
 import imagex.colormap as cm
 import ipywidgets
