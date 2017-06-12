@@ -219,7 +219,7 @@ class ImageData(object):
         if axes == None: return fig
 
 
-    def line_profile(self, data, points=[], linewidth=1, outside_range='constant'):
+    def line_profile(self, data, points=[], linewidth=1, outside_range='constant', **kwargs):
         """Calculates a line profile along the points array (x,y coordinates in nm units) of certain width.
 
         Args:
@@ -227,6 +227,7 @@ class ImageData(object):
             points: List of points in nm coordinates (x,y), fow which the line profile should be calculated.
             linewidth (float): Linewidth in pixel values.
             outside_range: Specifies how to treat potential values outside of the input data array. See the mode-parameter in skimage.measure.profile_line.
+            **kwargs: additional keyword arguments to be passed to skimage.measure.profile_line.
 
         Returns:
             lines: np array of positions and corresponding image-values. If more than 2 points are given,m a list of lines is returned corresponding to the line-data for the sections between the points.
@@ -246,7 +247,7 @@ class ImageData(object):
         for i in range(len(points)-1):
             p1 = (points_px[i][1], points_px[i][0])       # for the profile_line function we need row first (i.e. the y coordinate), then the column (i.e. the x coordinate)
             p2 = (points_px[i+1][1], points_px[i+1][0])
-            y = skimage.measure.profile_line(data, p1, p2, linewidth=linewidth, mode=outside_range)
+            y = skimage.measure.profile_line(data, p1, p2, linewidth=linewidth, mode=outside_range, **kwargs)
             line_length = get_distance(points[i], points[i+1])
             x = np.linspace(x_pos, line_length, len(y))
             x_pos += line_length
