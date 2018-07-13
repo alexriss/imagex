@@ -475,10 +475,8 @@ class ImageData(object):
         Raises:
             NotImplementedError: When the file extension is not known.  // [todo]
         """
-        if self.fileformat != "[Paramco32]": # 32 bit compressed
+        if not self.fileformat in ["[Paramco32]", "[Paramet32]"]: # 32 bit compressed, or uncompressed
             raise NotImplementedError('Reading of data in files saved in %s- format is not implemented yet.' % self.fileformat)
-
-        import zlib
 
         # extract channels to be read in
         if output_info>0: print('Reading body of %s' % fname)
@@ -510,7 +508,11 @@ class ImageData(object):
         f.seek(offset+4)  # data start 6 bytes afterwards
         read_all = f.read()
 
-        data_array = zlib.decompress(read_all)
+        if self.fileformat == "[Paramco32]":
+            import zlib
+            data_array = zlib.decompress(read_all)
+        elif self.fileformat == "[Paramet32]":
+            data_array = read_all
         fmt = '<f' # float
         ItemSize = struct.calcsize(fmt)
         extra_offset = 4
