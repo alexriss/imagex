@@ -592,7 +592,7 @@ class ImageData(object):
             raise ValueError('The input to pixels_to_nm should either be a single number or x,y coordinates.')
 
 
-def save_image(filename, data, cmap=cm.greys_linear, **kwargs):
+def save_image(filename, data, cmap=cm.greys_linear, clim=(), **kwargs):
     """Saves 2D image data as an image to a file.
 
     Args:
@@ -600,7 +600,11 @@ def save_image(filename, data, cmap=cm.greys_linear, **kwargs):
         data (numpy array): The image data in a 2D (row/column = y,x) format.
         **kwargs: Additional kwargs to be passed to matplotlib.image.imsave.
     """
-    matplotlib.image.imsave(filename, data, cmap=cmap,  **kwargs)
+    if len(clim)==2:
+        vmin, vmax = clim[0], clim[1]
+        matplotlib.image.imsave(filename, data, cmap=cmap,  vmin=vmin, vmax=vmax, **kwargs)
+    else:
+        matplotlib.image.imsave(filename, data, cmap=cmap,  **kwargs)
 
 
 def save_axes(axes, filename, dpi=100, pad_inches=0, transparent=True, **kwargs):
