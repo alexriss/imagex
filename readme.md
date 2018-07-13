@@ -2,7 +2,11 @@
 
 Python scripts to analyze scanning probe images.
 
-It currently works with Nanonis sxm files. Some preliminary support for CreaTec dat files has been added recently.
+It currently works with Nanonis sxm and CreaTec dat files.
+
+An example jupyter-notebook file can be found in the "demo" directory.
+
+
 
 
 ## Related projects

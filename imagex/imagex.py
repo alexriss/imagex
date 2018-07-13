@@ -103,6 +103,17 @@ class ImageData(object):
         return self.channels[i_channel]
 
 
+    def get_data(self, channel_name):
+        """Gets the channel data for channel_name
+        Args:
+            channel_name (str): string specifying the channel name to return
+
+        Returns:
+            data (numpy array): The image data in a 2D (row/column = y,x) format.
+        """
+        
+        return self.get_channel(channel_name)['data']
+    
 
     def plot_image(self, channel_name, cmap='', interpolation="bicubic", background="none", no_labels=False, pixel_units=False, output_filename="", output_dpi=100, alpha=1, axes=None, extra_output=True, **kwargs):
         """Plots channel data.
@@ -592,6 +603,24 @@ def save_image(filename, data, cmap=cm.greys_linear, **kwargs):
     matplotlib.image.imsave(filename, data, cmap=cmap,  **kwargs)
 
 
+def save_axes(axes, filename, dpi=100, pad_inches=0, transparent=True, **kwargs):
+    """Saves matplotlib axes object to a graphics file.
+
+    Args:
+        axex: Matplotlib axes object.
+        filename: A string containing a path to a filename, or a Python file-like object.
+        dpi: Resolution in dots per inch for the output file.
+        pad_inches: see matplotlib.pyplot.savefig.
+        bbox_inches: see matplotlib.pyplot.savefig.
+        transparent: see matplotlib.pyplot.savefig.
+        figsize: tuple specifying the width and height in inches.
+        **kwargs: Additional kwargs to be passed to matplotlib.pyplot.savefig.
+    """
+    fig = axes.get_figure()
+    extent = axes.get_window_extent().transformed(fig.dpi_scale_trans.inverted())
+    fig.savefig(filename, dpi=dpi, bbox_inches=extent, facecolor=fig.get_facecolor(), transparent=transparent, **kwargs)    
+
+    
 def save_figure(fig, filename, dpi=100, pad_inches=0, bbox_inches="tight", transparent=True, figsize=(), **kwargs):
     """Saves matplotlib figure object to a graphics file.
 
@@ -627,23 +656,28 @@ def images_colorscale(axs_list, min, max):
             im.cmap.set_over('#ff0000')
 
 
-def images_colorscale_sliders(axs_list, scale_step_size=0.01, display=True):
+def images_colorscale_sliders(axs_list, scale_step_size=0, display=True):
     """Creates ipywidget sliders to scale the 0th image for each axes in axs_list.
 
     Args:
         axs_list: List of matplotlib axes objects containing images.
-        scale_step_size: The step size for the sliders to use.
+        scale_step_size: The step size for the sliders to use. If set to 0 (default), then an automatic step_size will be picked.
         display: Specifies whether the ipywsliders will be displayed or returned.
 
     Returns:
         ipywidgets object: If display is False. If display is True, the widgets will be directly diplayed.
     """
+    import IPython.display
+    
     ias = []
     for ax in axs_list:
         scale_min, scale_max = ax.images[0].get_clim()
-        ia = ipywidgets.interactive(images_scale,
-                    min=ipywidgets.widgets.FloatSlider(min=scale_min,max=scale_max+scale_step_size,step=scale_step_size,value=scale_min),
-                    max=ipywidgets.widgets.FloatSlider(min=scale_min,max=scale_max+scale_step_size,step=scale_step_size,value=scale_max),
+        if scale_step_size == 0:
+            scale_step_size_curr = np.abs(scale_min-scale_max)/100
+            scale_step_size_curr = 10**(np.floor(np.log10(scale_step_size_curr)))
+        ia = ipywidgets.interactive(images_colorscale,
+                    min=ipywidgets.widgets.FloatSlider(min=scale_min,max=scale_max+scale_step_size_curr,step=scale_step_size_curr,value=scale_min),
+                    max=ipywidgets.widgets.FloatSlider(min=scale_min,max=scale_max+scale_step_size_curr,step=scale_step_size_curr,value=scale_max),
                     axs_list=ipywidgets.widgets.fixed([ax]))
         ias.append(ia)
     if display:
