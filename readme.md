@@ -14,7 +14,7 @@ An example jupyter-notebook file can be found in the "demo" directory.
 
 ## Related projects
 
-- [SpmIMages.jl](https://github.com/alexriss/SpmImages.jl): julia library to read and display SPM (scanning probe microscopy) images
+- [SpmImages.jl](https://github.com/alexriss/SpmImages.jl): julia library to read and display SPM (scanning probe microscopy) images
 - [grid*ex*](https://github.com/alexriss/gridex): python scripts to analyze 3D grid data.
 
 
