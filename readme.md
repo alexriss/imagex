@@ -14,7 +14,10 @@ An example jupyter-notebook file can be found in the "demo" directory.
 
 ## Related projects
 
-- [SpmImages.jl](https://github.com/alexriss/SpmImages.jl): julia library to read and display SPM (scanning probe microscopy) images
-- [grid*ex*](https://github.com/alexriss/gridex): python scripts to analyze 3D grid data.
+- [SpmImageTycoon.jl](https://github.com/alexriss/SpmImageTycoon.jl): App to organize SPM images and spectra.
+- [SpmImages.jl](https://github.com/alexriss/SpmImages.jl): Julia library to read and display SPM images.
+- [SpmSpectroscopy.jl](https://github.com/alexriss/SpmSpectroscopy.jl): Julia library to analyze scanning tunneling and atomic force spectroscopy data.
+- [SpmGrids.jl](https://github.com/alexriss/SpmGrids.jl): Julia library to read and analyze SPM grid spectroscopy.
+- [grid*ex*](https://github.com/alexriss/gridex): Python scripts to analyze 3D grid data.
 
 
